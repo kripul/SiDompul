@@ -1,0 +1,254 @@
+#!/bin/bash
+
+# Setup data
+TZ=Asia/Jakarta
+curl=$(which curl)" --insecure"
+jq="./jq"
+nomer_hp="$1"
+type="$2"
+nomer_hp=$(echo -e "$nomer_hp" | sed 's/^08/628/')
+file_data="data.json"
+user_email=$($jq --raw-output '.email' $file_data)
+pass_email=$($jq --raw-output '.password' $file_data)
+imei=$($jq --raw-output '.imei' $file_data)
+version=$($jq --raw-output '.version' $file_data)
+server=$($jq --raw-output '.server' $file_data)
+copyright=$($jq --raw-output '.copyright' $file_data)
+file_token="token.json"
+file_output="$1.json"
+
+login() {
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_25_1325_52' \
+	-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email} \
+	-o "$file_output"
+	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+	if [[ -z "$statusCode" ]]; then
+		if [[ "$type" == "--json" ]]; then
+			echo "{\"statusCode\": 404, \"statusMessage\": \"Not Found\", \"statusDescription\": \"The requested resource was not found on the server\", \"result\": {\"errorCode\": \"404\", \"errorMessage\": \"Server is under maintenance\"}}"
+			remove_cache
+			exit 0
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Server is under maintenance"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+			exit 0
+		fi
+	fi
+	if [[ "$statusCode" != 200 ]]; then
+		if [[ "$type" == "--json" ]]; then
+			echo $(cat $file_output)
+			remove_cache
+			exit 0
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
+			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
+			echo -e "$errorMessage"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+			exit 0
+		fi
+	fi
+}
+send_otp() {
+	sleep 5
+	otp=$($curl -Ls "http://${server}/getotp.php?u=${user_email}&p=${pass_email}")
+	if ! echo -e "$otp" | grep -qE '^[0-9]+$'; then
+		if [[ "$type" == "--json" ]]; then
+			echo "{\"statusCode\": 404, \"statusMessage\": \"Not Found\", \"statusDescription\": \"The requested resource was not found on the server\", \"result\": {\"errorCode\": \"404\", \"errorMessage\": \"Failed to verify incoming OTP\"}}"
+			remove_cache
+			exit 0
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Failed to verify incoming OTP"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+			exit 0
+		fi
+	fi
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
+	-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X GET https://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email}/${otp}/${imei} \
+	-o "$file_output"
+	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+	if [[ "$statusCode" == 200 ]]; then
+		accessToken=$(cat $file_output | $jq --raw-output '.result.data.accessToken')
+		refreshToken=$(cat $file_output | $jq --raw-output '.result.data.refreshToken')
+		$jq --null-input --arg et "$user_email" --arg at "$accessToken" --arg rt "$refreshToken" '{"emailToken": $et, "accessToken": $at, "refreshToken": $rt}' > $file_token
+	else
+		if [[ "$type" == "--json" ]]; then
+			echo $(cat $file_output)
+			remove_cache
+			exit 0
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
+			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
+			echo -e "$errorMessage"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+			exit 0
+		fi
+	fi
+}
+refresh_token() {
+	if [[ -f "$file_token" ]]; then
+		emailToken=$($jq --raw-output '.emailToken' $file_token)
+		accessToken=$($jq --raw-output '.accessToken' $file_token)
+		refreshToken=$($jq --raw-output '.refreshToken' $file_token)
+		if [[ "$user_email" == "$emailToken" ]] && [[ "$accessToken" != null ]] && [[ "$refreshToken" != null ]]; then
+			$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_25_1325_52' \
+			-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
+			-H 'language: en' -H 'version: ${version}' -H 'content-type: application/x-www-form-urlencoded' \
+			-H 'user-agent: okhttp/3.12.13' \
+			-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v1/login/token/refresh \
+			-d "grant_type=refresh_token&refresh_token=$refreshToken&imei=$imei" \
+			-o "$file_output"
+			statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+			if [[ -z "$statusCode" ]]; then
+				if [[ "$type" == "--json" ]]; then
+					echo "{\"statusCode\": 404, \"statusMessage\": \"Not Found\", \"statusDescription\": \"The requested resource was not found on the server\", \"result\": {\"errorCode\": \"404\", \"errorMessage\": \"Server is under maintenance\"}}"
+					remove_cache
+					exit 0
+				else
+					echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+					printf '%*s\n' "50" '' | tr ' ' '='
+					echo -e "Server is under maintenance"
+					printf '%*s\n' "50" '' | tr ' ' '='
+					echo -e "Copyright © $(date +'%Y') by $copyright"
+					remove_cache
+					exit 0
+				fi
+			fi
+			if [[ "$statusCode" == 200 ]]; then
+				accessToken=$($jq --raw-output '.result.accessToken' "$file_output")
+				refreshToken=$($jq --raw-output '.result.refreshToken' "$file_output")
+				$jq --null-input --arg et "$user_email" --arg at "$accessToken" --arg rt "$refreshToken" '{"emailToken": $et, "accessToken": $at, "refreshToken": $rt}' > $file_token
+			else
+				login
+				send_otp
+			fi
+		else
+			login
+			send_otp
+		fi
+	else
+		login
+		send_otp
+	fi
+}
+cek_info_nomor() {
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
+	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v1/common/prefix/${nomer_hp} \
+	-o "$file_output"
+	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+	if [[ "$statusCode" == 200 ]]; then
+		if [[ "$type" == "--json" ]]; then
+			echo $(cat $file_output)
+			remove_cache
+		else
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^owner/𝙊𝙬𝙣𝙚𝙧/g; s/^msisdn/𝙈𝙎𝙄𝙎𝘿𝙉/g' | sed '0,/^$/{//d}'
+			remove_cache
+		fi
+	fi
+}
+cek_info_masa_aktif() {
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
+	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/balance/${nomer_hp} \
+	-o "$file_output"
+	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+	if [[ "$statusCode" == 200 ]]; then
+		if [[ "$type" == "--json" ]]; then
+			echo $(cat $file_output)
+			remove_cache
+		else
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^expDate/𝙀𝙭𝙥𝘿𝙖𝙩𝙚/g' | sed '0,/^$/{//d}'
+			remove_cache
+		fi
+	fi
+}
+cek_kuota_data() {
+	info_nomor=$(cek_info_nomor)
+	info_masa_aktif=$(cek_info_masa_aktif)
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
+	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/${nomer_hp} \
+	-o "$file_output"
+	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
+	if [[ "$statusCode" == 200 ]]; then
+		if [[ "$type" == "--json" ]]; then
+			info_package=$(cat "$file_output")
+			echo "$info_nomor" "$info_masa_aktif" "$info_package" | $jq --slurp 'reduce .[] as $item ({}; . * $item)'
+			remove_cache
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			if [[ "$info_nomor" =~ "𝙊𝙬𝙣𝙚𝙧: XL" ]] || [[ "$info_nomor" =~ "𝙊𝙬𝙣𝙚𝙧: AXIS" ]]; then
+				echo -e "$info_nomor"
+				echo -e "$info_masa_aktif"
+				echo -e ""
+			fi
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^name/\n𝙉𝙖𝙢𝙚/g; s/^expDate/𝙀𝙭𝙥𝘿𝙖𝙩𝙚/g; s/^bname/𝘽𝙚𝙣𝙚𝙛𝙞𝙩/g; s/^quota/𝙌𝙪𝙤𝙩𝙖/g; s/^remaining/𝙍𝙚𝙢𝙖𝙞𝙣𝙞𝙣𝙜/g; s/^lastUpdate/\n𝙇𝙖𝙨𝙩𝙐𝙥𝙙𝙖𝙩𝙚/g' | sed '/type:/d' | sed '0,/^$/{//d}'
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+		fi
+	else
+		if [[ "$type" == "--json" ]]; then
+			echo $(cat $file_output)
+			remove_cache
+			exit 0
+		else
+			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
+			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
+			echo -e "$errorMessage"
+			printf '%*s\n' "50" '' | tr ' ' '='
+			echo -e "Copyright © $(date +'%Y') by $copyright"
+			remove_cache
+			exit 0
+		fi
+	fi
+}
+logout_xl(){
+	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
+	-H 'accept: application/json' -H "authorization: Bearer $accessToken" -H 'language: en' \
+	-H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
+	-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v3/auth/logout \
+	-o "$file_output"
+	if [[ "$statusCode" == 200 ]]; then
+		echo -e "Logout success"
+	else
+		echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+		printf '%*s\n' "50" '' | tr ' ' '='
+		statusDescription=$(cat $file_output | $jq --raw-output '.statusDescription')
+		echo -e "$statusDescription"
+		printf '%*s\n' "50" '' | tr ' ' '='
+		echo -e "Copyright © $(date +'%Y') by $copyright"
+		exit 0
+	fi
+}
+remove_cache(){
+	rm -Rf $file_output
+}
+refresh_token
+cek_kuota_data
+#logout_xl
