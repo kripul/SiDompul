@@ -9,6 +9,7 @@ function get_string_between($string, $start, $end){
 }
 $username = $_GET['u'];
 $password = $_GET['p'];
-$data = json_decode(file_get_contents('http://sidompul.cloudaccess.host/mail.php?u='.$username.'&p='.$password));
+$data = json_decode(file_get_contents('data.json'),true);
+$otp = json_decode(file_get_contents('http://'.$data['server'].'/mail.php?u='.$username.'&p='.$password));
 header('Content-Type: text/plain; charset=utf-8');
-die(get_string_between($data[0]->message_body, '<span style=3D"font-size:18px">', '</span>'));
+die(get_string_between($otp[0]->message_body, '<span style=3D"font-size:18px">', '</span>'));
