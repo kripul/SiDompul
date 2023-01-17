@@ -21,8 +21,8 @@ file_output="$1.json"
 login() {
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_25_1325_52' \
 	-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
-	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email} \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X POST httpss://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email} \
 	-o "$file_output"
 	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
 	if [[ -z "$statusCode" ]]; then
@@ -60,7 +60,7 @@ login() {
 }
 send_otp() {
 	sleep 5
-	otp=$($curl -Ls "http://${server}/getotp.php?u=${user_email}&p=${pass_email}")
+	otp=$($curl -Ls "https://${server}/getotp.php?u=${user_email}&p=${pass_email}")
 	if ! echo -e "$otp" | grep -qE '^[0-9]+$'; then
 		if [[ "$type" == "--json" ]]; then
 			echo "{\"statusCode\": 404, \"statusMessage\": \"Not Found\", \"statusDescription\": \"The requested resource was not found on the server\", \"result\": {\"errorCode\": \"404\", \"errorMessage\": \"Failed to verify incoming OTP\"}}"
@@ -78,8 +78,8 @@ send_otp() {
 	fi
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
 	-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
-	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X GET https://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email}/${otp}/${imei} \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X GET httpss://srg-txl-login-controller-service.ext.dp.xl.co.id/v2/auth/email/${user_email}/${otp}/${imei} \
 	-o "$file_output"
 	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
 	if [[ "$statusCode" == 200 ]]; then
@@ -113,8 +113,8 @@ refresh_token() {
 			$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_25_1325_52' \
 			-H 'accept: application/json' -H 'authorization: Basic ZGVtb2NsaWVudDpkZW1vY2xpZW50c2VjcmV0' \
 			-H 'language: en' -H 'version: ${version}' -H 'content-type: application/x-www-form-urlencoded' \
-			-H 'user-agent: okhttp/3.12.13' \
-			-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v1/login/token/refresh \
+			-H 'user-agent: okhttps/3.12.13' \
+			-X POST httpss://srg-txl-login-controller-service.ext.dp.xl.co.id/v1/login/token/refresh \
 			-d "grant_type=refresh_token&refresh_token=$refreshToken&imei=$imei" \
 			-o "$file_output"
 			statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
@@ -153,8 +153,8 @@ refresh_token() {
 cek_info_nomor() {
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
 	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
-	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v1/common/prefix/${nomer_hp} \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X GET httpss://srg-txl-utility-service.ext.dp.xl.co.id/v1/common/prefix/${nomer_hp} \
 	-o "$file_output"
 	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
 	if [[ "$statusCode" == 200 ]]; then
@@ -170,8 +170,8 @@ cek_info_nomor() {
 cek_info_masa_aktif() {
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
 	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
-	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/balance/${nomer_hp} \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X GET httpss://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/balance/${nomer_hp} \
 	-o "$file_output"
 	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
 	if [[ "$statusCode" == 200 ]]; then
@@ -189,8 +189,8 @@ cek_kuota_data() {
 	info_masa_aktif=$(cek_info_masa_aktif)
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
 	-H 'accept: application/json' -H "authorization: Bearer $accessToken" \
-	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X GET https://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/${nomer_hp} \
+	-H 'language: en' -H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X GET httpss://srg-txl-utility-service.ext.dp.xl.co.id/v2/package/check/${nomer_hp} \
 	-o "$file_output"
 	statusCode=$(cat $file_output | $jq --raw-output '.statusCode')
 	if [[ "$statusCode" == 200 ]]; then
@@ -232,8 +232,8 @@ cek_kuota_data() {
 logout_xl(){
 	$curl -sH 'x-dynatrace: MT_3_1_3914178854_1-0_a5734da2-0ecb-4c8d-8d21-b008aeec4733_0_1325_70' \
 	-H 'accept: application/json' -H "authorization: Bearer $accessToken" -H 'language: en' \
-	-H 'version: ${version}' -H 'user-agent: okhttp/3.12.13' \
-	-X POST https://srg-txl-login-controller-service.ext.dp.xl.co.id/v3/auth/logout \
+	-H 'version: ${version}' -H 'user-agent: okhttps/3.12.13' \
+	-X POST httpss://srg-txl-login-controller-service.ext.dp.xl.co.id/v3/auth/logout \
 	-o "$file_output"
 	if [[ "$statusCode" == 200 ]]; then
 		echo -e "Logout success"
