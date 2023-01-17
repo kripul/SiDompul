@@ -3,7 +3,8 @@
 # Setup data
 TZ=Asia/Jakarta
 curl=$(which curl)" --insecure"
-jq="./jq"
+#jq="./jq"
+jq="jq"
 nomer_hp="$1"
 type="$2"
 nomer_hp=$(echo -e "$nomer_hp" | sed 's/^08/628/')
@@ -30,7 +31,7 @@ login() {
 			remove_cache
 			exit 0
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "➣ Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
 			echo -e "Server is under maintenance"
 			printf '%*s\n' "50" '' | tr ' ' '='
@@ -45,7 +46,7 @@ login() {
 			remove_cache
 			exit 0
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "➣ Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
 			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
 			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
@@ -66,7 +67,7 @@ send_otp() {
 			remove_cache
 			exit 0
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "➣ Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
 			echo -e "Failed to verify incoming OTP"
 			printf '%*s\n' "50" '' | tr ' ' '='
@@ -91,7 +92,7 @@ send_otp() {
 			remove_cache
 			exit 0
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "➣ Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
 			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
 			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
@@ -123,7 +124,7 @@ refresh_token() {
 					remove_cache
 					exit 0
 				else
-					echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+					echo -e "Hasil:"
 					printf '%*s\n' "50" '' | tr ' ' '='
 					echo -e "Server is under maintenance"
 					printf '%*s\n' "50" '' | tr ' ' '='
@@ -161,7 +162,7 @@ cek_info_nomor() {
 			echo $(cat $file_output)
 			remove_cache
 		else
-			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^owner/𝙊𝙬𝙣𝙚𝙧/g; s/^msisdn/𝙈𝙎𝙄𝙎𝘿𝙉/g' | sed '0,/^$/{//d}'
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^owner/Pemilik/g; s/^msisdn/MSISDN/g' | sed '0,/^$/{//d}'
 			remove_cache
 		fi
 	fi
@@ -178,7 +179,7 @@ cek_info_masa_aktif() {
 			echo $(cat $file_output)
 			remove_cache
 		else
-			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^expDate/𝙀𝙭𝙥𝘿𝙖𝙩𝙚/g' | sed '0,/^$/{//d}'
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^expDate/Aktif Sampai/g' | sed '0,/^$/{//d}'
 			remove_cache
 		fi
 	fi
@@ -198,14 +199,14 @@ cek_kuota_data() {
 			echo "$info_nomor" "$info_masa_aktif" "$info_package" | $jq --slurp 'reduce .[] as $item ({}; . * $item)'
 			remove_cache
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "➣ Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
-			if [[ "$info_nomor" =~ "𝙊𝙬𝙣𝙚𝙧: XL" ]] || [[ "$info_nomor" =~ "𝙊𝙬𝙣𝙚𝙧: AXIS" ]]; then
+			if [[ "$info_nomor" =~ "Jenis Nomor: XL" ]] || [[ "$info_nomor" =~ "Jenis Nomor: AXIS" ]]; then
 				echo -e "$info_nomor"
 				echo -e "$info_masa_aktif"
 				echo -e ""
 			fi
-			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^name/\n𝙉𝙖𝙢𝙚/g; s/^expDate/𝙀𝙭𝙥𝘿𝙖𝙩𝙚/g; s/^bname/𝘽𝙚𝙣𝙚𝙛𝙞𝙩/g; s/^quota/𝙌𝙪𝙤𝙩𝙖/g; s/^remaining/𝙍𝙚𝙢𝙖𝙞𝙣𝙞𝙣𝙜/g; s/^lastUpdate/\n𝙇𝙖𝙨𝙩𝙐𝙥𝙙𝙖𝙩𝙚/g' | sed '/type:/d' | sed '0,/^$/{//d}'
+			$jq '.result.data' $file_output | awk -F '"' '{print $2 ": " $4}' | sed '/: $/d; /^: /d; s/^name/\nNama Paket/g; s/^expDate/Aktif Sampai/g; s/^bname/Benefit/g; s/^quota/Kuota/g; s/^remaining/Sisa Kuota/g; s/^lastUpdate/\nTerakhir diupdate/g' | sed '/type:/d' | sed '0,/^$/{//d}'
 			printf '%*s\n' "50" '' | tr ' ' '='
 			echo -e "Copyright © $(date +'%Y') by $copyright"
 			remove_cache
@@ -216,7 +217,7 @@ cek_kuota_data() {
 			remove_cache
 			exit 0
 		else
-			echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+			echo -e "Hasil:"
 			printf '%*s\n' "50" '' | tr ' ' '='
 			errorCode=$(cat $file_output | $jq --raw-output '.result.errorCode')
 			errorMessage=$(cat $file_output | $jq --raw-output '.result.errorMessage')
@@ -237,7 +238,7 @@ logout_xl(){
 	if [[ "$statusCode" == 200 ]]; then
 		echo -e "Logout success"
 	else
-		echo -e "➣ 𝙍𝙚𝙨𝙪𝙡𝙩:"
+		echo -e "Hasil:"
 		printf '%*s\n' "50" '' | tr ' ' '='
 		statusDescription=$(cat $file_output | $jq --raw-output '.statusDescription')
 		echo -e "$statusDescription"
